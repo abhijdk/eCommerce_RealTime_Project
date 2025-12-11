@@ -32,6 +32,8 @@ public class Product {
     @Size(min=10,max=50)
     private String description;
 
+    private Double price;
+
     @Column(name = "available")
     private boolean isAvailable=true;
 
