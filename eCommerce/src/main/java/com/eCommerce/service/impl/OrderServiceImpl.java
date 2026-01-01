@@ -4,6 +4,8 @@ import com.eCommerce.exception.OrderException;
 import com.eCommerce.exception.UserException;
 import com.eCommerce.model.*;
 import com.eCommerce.model.DTO.OrderDTO;
+import com.eCommerce.repository.CartItemRepository;
+import com.eCommerce.repository.CartRepository;
 import com.eCommerce.repository.OrderRepository;
 import com.eCommerce.repository.UserRepository;
 import com.eCommerce.service.OrderService;
@@ -25,53 +27,92 @@ public class OrderServiceImpl implements OrderService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private CartItemRepository cartItemRepository;
+
+    @Autowired
+    private CartRepository cartRepository;
+
+
+
+    @Override
+    public Orders getOrderDetails(Integer orderId) throws OrderException {
+        return  orderRepository.findById(orderId).orElseThrow(() -> new RuntimeException("OrderId not Found"));;
+    }
 
     @Override
     public OrderDTO placeOrder(Integer userId) throws OrderException {
-        User exUser = userRepository.findById(userId).orElseThrow(() -> new UserException("User Not Found"));
-
+//        Fetch User form Db
+        User exUser = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User Not Found"));
+//        Fetch user cart
         Cart exCart = exUser.getCart();
 
-        if (exCart.getTotal_Amount()==0){
-            throw new OrderException("Need to add Some Item in Cart");
+//        Validate cart is empty or not
+        if(exCart.getTotal_Amount()==0){
+            throw new OrderException("Add Items to the Cart First");
         }
 
-        Integer cartId = exCart.getCart_Id();
+//        Get cart id
 
-        Orders newOrd = new Orders();
+        Integer exCartId = exCart.getCart_Id();
 
-        newOrd.setOrder_Date(LocalDateTime.now());
-        newOrd.setStatus(OrderStatus.PENDING);
+//        Create new order obj and stoer date and status
+        Orders newOrders = new Orders();
+        newOrders.setOrder_Date(LocalDateTime.now());
+        newOrders.setStatus(OrderStatus.PENDING);
 
-        //Attaching newOrd Object to User
-        exUser.getOrders().add(newOrd);
-        //Adding User Object to the Order Object
-        newOrd.setUser(exUser);
+//        Bidirectional Mapping
+//        [
 
-        orderRepository.save(newOrd);
+//      Attaching newOrd Object to User
+        exUser.getOrders().add(newOrders);
 
-        //Populating the data into OrderItem Table (Cart Item we have Data)
-        List<Order_Item> orderItems=new ArrayList<>();
+//      Adding user obj to order obj
+        newOrders.setUser(exUser);
 
-        for (Cart_Item cartItem: exCart.getCart_items()){
-            if(cartItem.getCart().equals(cartId)){
-                Order_Item orderItem1 = new Order_Item();
-                orderItem1.setProduct(cartItem.getProduct());
-                orderItem1.setOrder_Id(newOrd.getOrder_Id());
-                orderItem1.setQuantity(cartItem.getQuantity());
+//        ]
+
+//        Save new Oredr ot repo
+        orderRepository.save(newOrders);
+
+//        Convort Cart Item to order item
+
+        List<Order_Item> listOfItems=new ArrayList<>();
+
+        for(Cart_Item cartItem:exCart.getCart_items()){
+            if(cartItem.getCart().getCart_Id()==exCartId){
+                Order_Item orderItem = new Order_Item();
+                orderItem.setProduct(cartItem.getProduct());
+                orderItem.setOrder_Id(cartItem.getCart_Item_Id());
+                orderItem.setQuantity(cartItem.getQuantity());
+                listOfItems.add(orderItem);
             }
         }
 
-        return null;
+        newOrders.setOrder_items(listOfItems);
+        newOrders.setTotal_Amount(exCart.getTotal_Amount());
+
+        orderRepository.save(newOrders);
+
+        exCart.setTotal_Amount(exCart.getTotal_Amount()-newOrders.getTotal_Amount());
+
+        cartItemRepository.removeAllProductFromCart(exCartId);
+        cartRepository.save(exCart);
+
+//Need to Return Order DTO hence the below code
+        OrderDTO uiObj=new OrderDTO();
+        uiObj.setOrderId(newOrders.getOrder_Id());
+        uiObj.setOrderAmount(newOrders.getTotal_Amount());
+        uiObj.setOrderStatus(newOrders.getStatus().toString());
+        uiObj.setPaymentStatus("PENDING");
+        uiObj.setOrderDate(newOrders.getOrder_Date().toString());
+        return uiObj;
+
+
     }
 
     @Override
     public OrderDTO updateOrder(Integer orderId, OrderDTO orderdto) throws OrderException {
-        return null;
-    }
-
-    @Override
-    public Orders getOrderDetails(Integer orderId) throws OrderException {
         return null;
     }
 

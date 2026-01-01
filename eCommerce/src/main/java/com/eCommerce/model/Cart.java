@@ -20,7 +20,7 @@ public class Cart {
     @GeneratedValue (strategy = GenerationType.AUTO)
     private Integer cart_Id;
 
-    private double total_Amount;
+    private Integer total_Amount;
 
     @OneToOne
     @JoinColumn(name = "user_Id")

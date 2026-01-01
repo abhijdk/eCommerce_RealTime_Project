@@ -17,7 +17,7 @@ public class OrderDTO {
     private String orderDate;
 
     @NotNull(message="This field is Mandatory")
-    private String orderAmount;
+    private Integer orderAmount;
 
     @NotNull(message="This field is Mandatory")
     private String orderStatus;
